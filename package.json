@@ -1,0 +1,14 @@
+{
+  "name": "bulorun",
+  "version": "1.0.0",
+  "description": "2026 불로런 참가 접수",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "init-db": "node -e \"require('./server.js').initDb()\""
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.6.0",
+    "express": "^4.21.0"
+  }
+}
