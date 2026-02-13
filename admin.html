@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>참가 신청 목록 | 불로런 관리자</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-page { padding: 2rem 1.5rem; max-width: 1200px; margin: 0 auto; }
+    .admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+    .admin-title { font-size: 1.5rem; font-weight: 700; color: var(--color-text, #1e2220); }
+    .admin-link { color: var(--color-blue, #5b8fb5); font-weight: 500; }
+    .admin-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+    .admin-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+    .admin-filters label { font-size: 0.9rem; color: var(--color-text-muted, #5c6564); margin-right: 0.25rem; }
+    .admin-filters select, .admin-filters input { padding: 0.5rem 0.75rem; border: 1px solid rgba(91, 143, 181, 0.3); border-radius: 8px; font-size: 0.9rem; background: var(--color-surface, #fff); }
+    .admin-filters input[type="text"] { min-width: 160px; }
+    .admin-btn { padding: 0.5rem 1rem; font-size: 0.9rem; font-weight: 600; border-radius: 8px; cursor: pointer; border: none; background: var(--color-blue, #5b8fb5); color: #fff; }
+    .admin-btn:hover { opacity: 0.9; }
+    .admin-btn-excel { background: #217346; }
+    .admin-count { font-size: 0.9rem; color: var(--color-text-muted); }
+    .admin-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid rgba(91, 143, 181, 0.2); background: var(--color-surface, #fff); }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .admin-table th, .admin-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid rgba(91, 143, 181, 0.12); }
+    .admin-table th { background: var(--color-blue-soft, rgba(91, 143, 181, 0.12)); font-weight: 600; color: var(--color-blue, #5b8fb5); }
+    .admin-table tr:hover td { background: var(--color-surface-elevated, #f0f3f6); }
+    .admin-table tr.hidden { display: none; }
+    .admin-table .col-id { width: 3rem; }
+    .admin-table .col-date { width: 10rem; white-space: nowrap; }
+    .admin-empty { text-align: center; padding: 3rem; color: var(--color-text-muted, #5c6564); }
+    .admin-loading { text-align: center; padding: 2rem; color: var(--color-text-muted); }
+  </style>
+</head>
+<body>
+  <div class="admin-page">
+    <div class="admin-header">
+      <h1 class="admin-title">참가 신청 목록</h1>
+      <a href="/" class="admin-link">← 메인으로</a>
+    </div>
+    <div class="admin-toolbar">
+      <div class="admin-filters">
+        <label for="filter-category">참가 부문</label>
+        <select id="filter-category">
+          <option value="">전체</option>
+          <option value="10K-competition">10K - 경쟁부문</option>
+          <option value="10K-noncompetition">10K - 비경쟁부문</option>
+          <option value="5K-competition">5K - 경쟁부문</option>
+          <option value="5K-noncompetition">5K - 비경쟁부문</option>
+          <option value="staff">스탭지원</option>
+          <option value="none">참가안함</option>
+        </select>
+        <label for="filter-dinner">회식</label>
+        <select id="filter-dinner">
+          <option value="">전체</option>
+          <option value="attend">참석</option>
+          <option value="absent">불참</option>
+        </select>
+        <label for="filter-search">검색</label>
+        <input type="text" id="filter-search" placeholder="이름·각오 한마디">
+      </div>
+      <button type="button" class="admin-btn admin-btn-excel" id="btn-excel">엑셀 다운로드</button>
+      <span class="admin-count" id="admin-count"></span>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table" id="admin-table">
+        <thead>
+          <tr>
+            <th class="col-id">No</th>
+            <th>이름</th>
+            <th>생년월일</th>
+            <th>참가 부문</th>
+            <th>회식</th>
+            <th>각오 한마디</th>
+            <th class="col-date">접수일시</th>
+          </tr>
+        </thead>
+        <tbody id="admin-tbody">
+          <tr><td colspan="7" class="admin-loading">불러오는 중…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p id="admin-empty" class="admin-empty" style="display:none;">접수된 내역이 없습니다.</p>
+  </div>
+  <script>
+    var categoryLabels = {
+      '10K-competition': '10K - 경쟁부문',
+      '10K-noncompetition': '10K - 비경쟁부문',
+      '5K-competition': '5K - 경쟁부문',
+      '5K-noncompetition': '5K - 비경쟁부문',
+      'staff': '스탭지원',
+      'none': '참가안함'
+    };
+    var dinnerLabels = { 'attend': '참석', 'absent': '불참' };
+
+    var allRows = [];
+
+    function escapeHtml(s) {
+      var div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    function getFilters() {
+      return {
+        category: document.getElementById('filter-category').value,
+        dinner: document.getElementById('filter-dinner').value,
+        search: (document.getElementById('filter-search').value || '').trim().toLowerCase()
+      };
+    }
+
+    function filterRows(rows) {
+      var f = getFilters();
+      return rows.filter(function (r) {
+        if (f.category && r.category !== f.category) return false;
+        if (f.dinner && r.dinner !== f.dinner) return false;
+        if (f.search) {
+          var name = (r.name || '').toLowerCase();
+          var message = (r.message || '').toLowerCase();
+          if (name.indexOf(f.search) === -1 && message.indexOf(f.search) === -1) return false;
+        }
+        return true;
+      });
+    }
+
+    function renderTable(rows) {
+      var tbody = document.getElementById('admin-tbody');
+      var emptyEl = document.getElementById('admin-empty');
+      var countEl = document.getElementById('admin-count');
+
+      if (!rows || rows.length === 0) {
+        tbody.innerHTML = '';
+        emptyEl.style.display = 'block';
+        countEl.textContent = '';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      countEl.textContent = '총 ' + rows.length + '명';
+      tbody.innerHTML = rows.map(function (r) {
+        var cat = categoryLabels[r.category] || r.category;
+        var dinner = dinnerLabels[r.dinner] || r.dinner;
+        return '<tr data-id="' + r.id + '"><td class="col-id">' + r.id + '</td><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.birthdate) + '</td><td>' + escapeHtml(cat) + '</td><td>' + escapeHtml(dinner) + '</td><td>' + escapeHtml(r.message) + '</td><td class="col-date">' + escapeHtml(r.created_at) + '</td></tr>';
+      });
+    }
+
+    function applyFilter() {
+      var filtered = filterRows(allRows);
+      renderTable(filtered);
+    }
+
+    function downloadExcel() {
+      var filtered = filterRows(allRows);
+      if (filtered.length === 0) {
+        alert('다운로드할 데이터가 없습니다.');
+        return;
+      }
+      var headers = ['No', '이름', '생년월일', '참가 부문', '회식', '각오 한마디', '접수일시'];
+      var csv = headers.map(function (h) { return '"' + String(h).replace(/"/g, '""') + '"'; }).join(',') + '\r\n';
+      filtered.forEach(function (r) {
+        var cat = categoryLabels[r.category] || r.category;
+        var dinner = dinnerLabels[r.dinner] || r.dinner;
+        var row = [r.id, r.name, r.birthdate, cat, dinner, r.message, r.created_at];
+        csv += row.map(function (cell) { return '"' + String(cell || '').replace(/"/g, '""') + '"'; }).join(',') + '\r\n';
+      });
+      var BOM = '\uFEFF';
+      var blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '불로런_참가신청목록_' + new Date().toISOString().slice(0, 10) + '.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    document.getElementById('filter-category').addEventListener('change', applyFilter);
+    document.getElementById('filter-dinner').addEventListener('change', applyFilter);
+    document.getElementById('filter-search').addEventListener('input', applyFilter);
+    document.getElementById('btn-excel').addEventListener('click', downloadExcel);
+
+    fetch('/api/registrations')
+      .then(function (res) { return res.json(); })
+      .then(function (rows) {
+        allRows = rows || [];
+        applyFilter();
+      })
+      .catch(function () {
+        document.getElementById('admin-tbody').innerHTML = '<tr><td colspan="7" class="admin-loading">목록을 불러오지 못했습니다.</td></tr>';
+      });
+  </script>
+</body>
+</html>

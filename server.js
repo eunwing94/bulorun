@@ -35,7 +35,10 @@ function initDb() {
 }
 
 app.use(express.json());
-app.use(express.static(__dirname));
+
+app.get('/admin', function (req, res) {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
 
 app.post('/api/registrations', function (req, res) {
   const { name, birthdate, category, dinner, message } = req.body || {};
@@ -74,6 +77,8 @@ app.get('/api/registrations', function (req, res) {
     res.status(500).json({ error: '조회 중 오류가 발생했습니다.' });
   }
 });
+
+app.use(express.static(__dirname));
 
 if (require.main === module) {
   initDb();
