@@ -46,6 +46,14 @@ app.use(function (req, res, next) {
 });
 
 app.get('/admin', function (req, res) {
+  res.sendFile(path.join(__dirname, 'admin.html'), function (err) {
+    if (err) {
+      console.error('admin.html sendFile:', err);
+      res.status(500).send('admin 페이지를 불러올 수 없습니다.');
+    }
+  });
+});
+app.get('/admin.html', function (req, res) {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 

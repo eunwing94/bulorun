@@ -25,8 +25,16 @@
     .admin-table th { background: var(--color-blue-soft, rgba(91, 143, 181, 0.12)); font-weight: 600; color: var(--color-blue, #5b8fb5); }
     .admin-table tr:hover td { background: var(--color-surface-elevated, #f0f3f6); }
     .admin-table tr.hidden { display: none; }
-    .admin-table .col-id { width: 3rem; }
+    .admin-table .col-name { min-width: 5rem; white-space: nowrap; }
     .admin-table .col-date { width: 10rem; white-space: nowrap; }
+    .admin-table .filter-row th { padding: 0.5rem; vertical-align: middle; background: rgba(91, 143, 181, 0.06); }
+    .admin-table .filter-row input,
+    .admin-table .filter-row select { width: 100%; max-width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem; border: 1px solid rgba(91, 143, 181, 0.25); border-radius: 6px; }
+    .admin-table .name-duplicate { color: #c53030; font-weight: 600; }
+    .admin-table td::before,
+    .admin-table td::after,
+    .admin-table th::before,
+    .admin-table th::after { display: none !important; content: none !important; }
     .admin-empty { text-align: center; padding: 3rem; color: var(--color-text-muted, #5c6564); }
     .admin-loading { text-align: center; padding: 2rem; color: var(--color-text-muted); }
   </style>
@@ -37,27 +45,7 @@
       <h1 class="admin-title">참가 신청 목록</h1>
       <a href="/" class="admin-link">← 메인으로</a>
     </div>
-    <div class="admin-toolbar">
-      <div class="admin-filters">
-        <label for="filter-category">참가 부문</label>
-        <select id="filter-category">
-          <option value="">전체</option>
-          <option value="10K-competition">10K - 경쟁부문</option>
-          <option value="10K-noncompetition">10K - 비경쟁부문</option>
-          <option value="5K-competition">5K - 경쟁부문</option>
-          <option value="5K-noncompetition">5K - 비경쟁부문</option>
-          <option value="staff">스탭지원</option>
-          <option value="none">참가안함</option>
-        </select>
-        <label for="filter-dinner">회식</label>
-        <select id="filter-dinner">
-          <option value="">전체</option>
-          <option value="attend">참석</option>
-          <option value="absent">불참</option>
-        </select>
-        <label for="filter-search">검색</label>
-        <input type="text" id="filter-search" placeholder="이름·각오 한마디">
-      </div>
+    <div class="admin-toolbar" style="margin-bottom: 1rem;">
       <button type="button" class="admin-btn admin-btn-excel" id="btn-excel">엑셀 다운로드</button>
       <span class="admin-count" id="admin-count"></span>
     </div>
@@ -65,17 +53,40 @@
       <table class="admin-table" id="admin-table">
         <thead>
           <tr>
-            <th class="col-id">No</th>
-            <th>이름</th>
+            <th class="col-name">이름</th>
             <th>생년월일</th>
             <th>참가 부문</th>
             <th>회식</th>
             <th>각오 한마디</th>
             <th class="col-date">접수일시</th>
           </tr>
+          <tr class="filter-row">
+            <th><input type="text" id="filter-name" placeholder="이름 검색"></th>
+            <th></th>
+            <th>
+              <select id="filter-category">
+                <option value="">전체</option>
+                <option value="10K-competition">10K - 경쟁부문</option>
+                <option value="10K-noncompetition">10K - 비경쟁부문</option>
+                <option value="5K-competition">5K - 경쟁부문</option>
+                <option value="5K-noncompetition">5K - 비경쟁부문</option>
+                <option value="staff">스탭지원</option>
+                <option value="none">참가안함</option>
+              </select>
+            </th>
+            <th>
+              <select id="filter-dinner">
+                <option value="">전체</option>
+                <option value="attend">참석</option>
+                <option value="absent">불참</option>
+              </select>
+            </th>
+            <th><input type="text" id="filter-search" placeholder="각오 한마디 검색"></th>
+            <th></th>
+          </tr>
         </thead>
         <tbody id="admin-tbody">
-          <tr><td colspan="7" class="admin-loading">불러오는 중…</td></tr>
+          <tr><td colspan="6" class="admin-loading">불러오는 중…</td></tr>
         </tbody>
       </table>
     </div>
@@ -119,8 +130,19 @@
       return div.innerHTML;
     }
 
+    function formatBirthdate(val) {
+      if (!val) return '';
+      var s = String(val).trim().replace(/\s/g, '');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      var m = s.match(/^(\d{4})[-\/]?(\d{1,2})[-\/]?(\d{1,2})$/);
+      if (m) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
+      if (/^\d{8}$/.test(s)) return s.slice(0, 4) + '-' + s.slice(4, 6) + '-' + s.slice(6, 8);
+      return s;
+    }
+
     function getFilters() {
       return {
+        name: (document.getElementById('filter-name').value || '').trim().toLowerCase(),
         category: document.getElementById('filter-category').value,
         dinner: document.getElementById('filter-dinner').value,
         search: (document.getElementById('filter-search').value || '').trim().toLowerCase()
@@ -130,21 +152,30 @@
     function filterRows(rows) {
       var f = getFilters();
       return rows.filter(function (r) {
+        if (f.name && (r.name || '').toLowerCase().indexOf(f.name) === -1) return false;
         if (f.category && r.category !== f.category) return false;
         if (f.dinner && r.dinner !== f.dinner) return false;
-        if (f.search) {
-          var name = (r.name || '').toLowerCase();
-          var message = (r.message || '').toLowerCase();
-          if (name.indexOf(f.search) === -1 && message.indexOf(f.search) === -1) return false;
-        }
+        if (f.search && (r.message || '').toLowerCase().indexOf(f.search) === -1) return false;
         return true;
       });
+    }
+
+    function getDuplicateNames(rows) {
+      var count = {};
+      rows.forEach(function (r) {
+        var n = String(r.name || '').trim();
+        if (n) count[n] = (count[n] || 0) + 1;
+      });
+      var dup = {};
+      Object.keys(count).forEach(function (n) { if (count[n] > 1) dup[n] = true; });
+      return dup;
     }
 
     function renderTable(rows) {
       var tbody = document.getElementById('admin-tbody');
       var emptyEl = document.getElementById('admin-empty');
       var countEl = document.getElementById('admin-count');
+      var duplicateNames = getDuplicateNames(allRows);
 
       if (!rows || rows.length === 0) {
         tbody.innerHTML = '';
@@ -157,17 +188,22 @@
       tbody.innerHTML = rows.map(function (r) {
         var cat = categoryLabels[r.category] || r.category;
         var dinner = dinnerLabels[r.dinner] || r.dinner;
-        return '<tr data-id="' + r.id + '"><td class="col-id">' + r.id + '</td><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.birthdate) + '</td><td>' + escapeHtml(cat) + '</td><td>' + escapeHtml(dinner) + '</td><td>' + escapeHtml(r.message) + '</td><td class="col-date">' + escapeHtml(r.created_at) + '</td></tr>';
-      });
+        var nameStr = String(r.name || '').replace(/,/g, '').trim();
+        var birthStr = formatBirthdate(r.birthdate);
+        var nameClass = duplicateNames[nameStr] ? 'col-name name-duplicate' : 'col-name';
+        return '<tr data-id="' + r.id + '"><td class="' + nameClass + '">' + escapeHtml(nameStr) + '</td><td>' + escapeHtml(birthStr) + '</td><td>' + escapeHtml(cat) + '</td><td>' + escapeHtml(dinner) + '</td><td>' + escapeHtml(r.message) + '</td><td class="col-date">' + escapeHtml(r.created_at) + '</td></tr>';
+      }).join('');
     }
 
     function applyFilter() {
       var filtered = filterRows(allRows);
+      filtered.sort(function (a, b) { return (a.name || '').localeCompare(b.name || '', 'ko'); });
       renderTable(filtered);
     }
 
     function downloadExcel() {
       var filtered = filterRows(allRows);
+      filtered.sort(function (a, b) { return (a.name || '').localeCompare(b.name || '', 'ko'); });
       if (filtered.length === 0) {
         alert('다운로드할 데이터가 없습니다.');
         return;
@@ -177,7 +213,7 @@
       filtered.forEach(function (r) {
         var cat = categoryLabels[r.category] || r.category;
         var dinner = dinnerLabels[r.dinner] || r.dinner;
-        var row = [r.id, r.name, r.birthdate, cat, dinner, r.message, r.created_at];
+        var row = [r.id, r.name, formatBirthdate(r.birthdate), cat, dinner, r.message, r.created_at];
         csv += row.map(function (cell) { return '"' + String(cell || '').replace(/"/g, '""') + '"'; }).join(',') + '\r\n';
       });
       var BOM = '\uFEFF';
@@ -189,6 +225,7 @@
       URL.revokeObjectURL(a.href);
     }
 
+    document.getElementById('filter-name').addEventListener('input', applyFilter);
     document.getElementById('filter-category').addEventListener('change', applyFilter);
     document.getElementById('filter-dinner').addEventListener('change', applyFilter);
     document.getElementById('filter-search').addEventListener('input', applyFilter);
@@ -222,7 +259,7 @@
             applyFilter();
           })
           .catch(function () {
-            document.getElementById('admin-tbody').innerHTML = '<tr><td colspan="7" class="admin-loading">목록을 불러오지 못했습니다.</td></tr>';
+            document.getElementById('admin-tbody').innerHTML = '<tr><td colspan="6" class="admin-loading">목록을 불러오지 못했습니다.</td></tr>';
           });
         return;
       }
@@ -234,7 +271,7 @@
           applyFilter();
         })
         .catch(function () {
-          document.getElementById('admin-tbody').innerHTML = '<tr><td colspan="7" class="admin-loading">목록을 불러오지 못했습니다. Firebase 설정 또는 API 주소를 확인하세요.</td></tr>';
+          document.getElementById('admin-tbody').innerHTML = '<tr><td colspan="6" class="admin-loading">목록을 불러오지 못했습니다. Firebase 설정 또는 API 주소를 확인하세요.</td></tr>';
         });
     }
     loadRows();

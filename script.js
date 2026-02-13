@@ -62,6 +62,35 @@
         return;
       }
 
+      var dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(birthdate)) {
+        alert('생년월일은 yyyy-MM-dd 형식으로 입력해 주세요. (예: 1990-01-01)');
+        document.getElementById('birthdate').focus();
+        return;
+      }
+      var parts = birthdate.split('-');
+      var y = parseInt(parts[0], 10);
+      var m = parseInt(parts[1], 10);
+      var d = parseInt(parts[2], 10);
+      var dateObj = new Date(y, m - 1, d);
+      if (dateObj.getFullYear() !== y || dateObj.getMonth() !== m - 1 || dateObj.getDate() !== d) {
+        alert('올바른 날짜를 입력해 주세요.');
+        document.getElementById('birthdate').focus();
+        return;
+      }
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (dateObj > today) {
+        alert('생년월일은 오늘 이전 날짜로 입력해 주세요.');
+        document.getElementById('birthdate').focus();
+        return;
+      }
+      if (y < 1900) {
+        alert('생년월일 연도가 올바르지 않습니다.');
+        document.getElementById('birthdate').focus();
+        return;
+      }
+
       var payload = {
         name: name,
         birthdate: birthdate,
