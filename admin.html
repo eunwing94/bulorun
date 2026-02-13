@@ -81,6 +81,25 @@
     </div>
     <p id="admin-empty" class="admin-empty" style="display:none;">접수된 내역이 없습니다.</p>
   </div>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script>
+    var FIREBASE_CONFIG = {
+      apiKey: "AIzaSyAwknBpq0v02BAlVr6y_iDVJEYcTqauKNQ",
+      authDomain: "bulorun-275f7.firebaseapp.com",
+      projectId: "bulorun-275f7",
+      storageBucket: "bulorun-275f7.firebasestorage.app",
+      messagingSenderId: "688558152971",
+      appId: "1:688558152971:web:73aa5ed6bbb0577a2b160e",
+      measurementId: "G-YZDS6771Z7"
+    };
+    if (typeof FIREBASE_CONFIG === 'object' && FIREBASE_CONFIG && FIREBASE_CONFIG.projectId) {
+      try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        window.firestoreDb = firebase.firestore();
+      } catch (e) { console.warn('Firebase init:', e); }
+    }
+  </script>
   <script>
     var categoryLabels = {
       '10K-competition': '10K - 경쟁부문',
@@ -175,15 +194,50 @@
     document.getElementById('filter-search').addEventListener('input', applyFilter);
     document.getElementById('btn-excel').addEventListener('click', downloadExcel);
 
-    fetch('/api/registrations')
-      .then(function (res) { return res.json(); })
-      .then(function (rows) {
-        allRows = rows || [];
-        applyFilter();
-      })
-      .catch(function () {
-        document.getElementById('admin-tbody').innerHTML = '<tr><td colspan="7" class="admin-loading">목록을 불러오지 못했습니다.</td></tr>';
-      });
+    function formatCreatedAt(val) {
+      if (!val) return '';
+      if (val.toDate && typeof val.toDate === 'function') return val.toDate().toLocaleString('ko-KR');
+      return String(val);
+    }
+
+    function loadRows() {
+      if (window.firestoreDb) {
+        firestoreDb.collection('registrations').get()
+          .then(function (snap) {
+            allRows = snap.docs.map(function (d) {
+              var data = d.data();
+              return {
+                id: d.id,
+                name: data.name || '',
+                birthdate: data.birthdate || '',
+                category: data.category || '',
+                dinner: data.dinner || '',
+                message: data.message || '',
+                created_at: formatCreatedAt(data.created_at),
+                _ts: data.created_at && data.created_at.toMillis ? data.created_at.toMillis() : 0
+              };
+            });
+            allRows.sort(function (a, b) { return (b._ts || 0) - (a._ts || 0); });
+            allRows.forEach(function (r) { delete r._ts; });
+            applyFilter();
+          })
+          .catch(function () {
+            document.getElementById('admin-tbody').innerHTML = '<tr><td colspan="7" class="admin-loading">목록을 불러오지 못했습니다.</td></tr>';
+          });
+        return;
+      }
+      var apiUrl = (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '') + '/api/registrations';
+      fetch(apiUrl)
+        .then(function (res) { return res.json(); })
+        .then(function (rows) {
+          allRows = rows || [];
+          applyFilter();
+        })
+        .catch(function () {
+          document.getElementById('admin-tbody').innerHTML = '<tr><td colspan="7" class="admin-loading">목록을 불러오지 못했습니다. Firebase 설정 또는 API 주소를 확인하세요.</td></tr>';
+        });
+    }
+    loadRows();
   </script>
 </body>
 </html>

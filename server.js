@@ -36,6 +36,15 @@ function initDb() {
 
 app.use(express.json());
 
+// 다른 도메인에서 접속해도 API 호출 가능 (배포 시 프론트/백 분리 대비)
+app.use(function (req, res, next) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 app.get('/admin', function (req, res) {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });

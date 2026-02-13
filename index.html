@@ -206,6 +206,28 @@
     </div>
   </footer>
 
+  <!-- 방법 1) Firebase 사용 (백엔드 없이 GitHub Pages만 사용 시): Firebase 콘솔에서 프로젝트 생성 후 아래 설정 복사 -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script>
+    var FIREBASE_CONFIG = {
+      apiKey: "AIzaSyAwknBpq0v02BAlVr6y_iDVJEYcTqauKNQ",
+      authDomain: "bulorun-275f7.firebaseapp.com",
+      projectId: "bulorun-275f7",
+      storageBucket: "bulorun-275f7.firebasestorage.app",
+      messagingSenderId: "688558152971",
+      appId: "1:688558152971:web:73aa5ed6bbb0577a2b160e",
+      measurementId: "G-YZDS6771Z7"
+    };
+    if (typeof FIREBASE_CONFIG === 'object' && FIREBASE_CONFIG && FIREBASE_CONFIG.projectId) {
+      try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        window.firestoreDb = firebase.firestore();
+      } catch (e) { console.warn('Firebase init:', e); }
+    }
+  </script>
+  <!-- 방법 2) Node 백엔드 사용 시: 아래만 설정 (예: https://bulorun-api.onrender.com) -->
+  <script>var API_BASE_URL = '';</script>
   <script src="script.js"></script>
 </body>
 </html>

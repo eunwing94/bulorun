@@ -70,21 +70,39 @@
         message: message
       };
 
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/registrations');
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.onload = function () {
+      function onSuccess() {
         closeModal();
         form.reset();
+        alert('접수가 완료되었습니다!');
+      }
+      function onError(msg) {
+        alert(msg || '접수 중 오류가 발생했습니다. 다시 시도해 주세요.');
+      }
+
+      if (window.firestoreDb) {
+        firestoreDb.collection('registrations').add({
+          name: payload.name,
+          birthdate: payload.birthdate,
+          category: payload.category,
+          dinner: payload.dinner,
+          message: payload.message,
+          created_at: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(onSuccess).catch(function (err) { onError('접수 중 오류가 발생했습니다.'); });
+        return;
+      }
+
+      var apiUrl = (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '') + '/api/registrations';
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', apiUrl);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function () {
         if (xhr.status >= 200 && xhr.status < 300) {
-          alert('접수가 완료되었습니다!');
+          onSuccess();
         } else {
-          alert('접수 중 오류가 발생했습니다. 다시 시도해 주세요.');
+          onError();
         }
       };
-      xhr.onerror = function () {
-        alert('접수 중 오류가 발생했습니다. 서버 연결을 확인해 주세요.');
-      };
+      xhr.onerror = function () { onError('접수 중 오류가 발생했습니다. 서버 연결을 확인해 주세요.'); };
       xhr.send(JSON.stringify(payload));
     });
   }
