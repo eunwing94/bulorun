@@ -312,15 +312,34 @@
         submitBtn.addEventListener('click', function () {
           var password = input.value.trim();
           if (!password) { alert('비밀번호를 입력하세요.'); return; }
+          var ADMIN_PW = 'BuloERP1!';
+          function basePath() {
+            var seg = location.pathname.split('/').filter(Boolean);
+            if (!seg.length) return '/';
+            return '/' + (seg.length === 1 ? seg[0] + '/' : seg.slice(0, -1).join('/') + '/');
+          }
+          function onSuccess() {
+            sessionStorage.setItem('bulorun_admin', '1');
+            closeAdminModal();
+            window.location.href = basePath() + 'admin';
+          }
+          function onFailStatic() {
+            if (password !== ADMIN_PW) { alert('비밀번호가 올바르지 않습니다.'); return; }
+            sessionStorage.setItem('bulorun_admin', '1');
+            closeAdminModal();
+            window.location.href = basePath() + 'admin.html';
+          }
           fetch('/api/admin-auth', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password: password }),
             credentials: 'same-origin'
           }).then(function (res) {
-            if (res.ok) { closeAdminModal(); window.location.href = '/admin'; return; }
+            if (res.ok) { onSuccess(); return; }
             return res.json().then(function (data) { alert(data.error || '비밀번호가 올바르지 않습니다.'); });
-          }).catch(function () { alert('연결할 수 없습니다. 서버를 확인하세요.'); });
+          }).catch(function () {
+            onFailStatic();
+          });
         });
       }
       modal && modal.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAdminModal(); });

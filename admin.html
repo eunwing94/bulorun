@@ -15,14 +15,20 @@
     .admin-index-back { margin-top: 2rem; }
     .admin-index-back a { color: var(--color-text-muted, #5c6564); font-weight: 500; }
   </style>
+  <script>
+    (function(){ if(!sessionStorage.getItem('bulorun_admin')){ var s=location.pathname.split('/').filter(Boolean); var b=s.length?('/'+(s.length===1?s[0]+'/':s.slice(0,-1).join('/')+'/')):'/'; location.href=b; } })();
+  </script>
 </head>
 <body>
   <div class="admin-index-page">
     <h1 class="admin-index-title">관리자</h1>
     <ul class="admin-index-list">
-      <li><a href="/registration">참가 신청 목록</a></li>
-      <li><a href="/prediction">10K 5등 예측 응모 목록</a></li>
+      <li><a href="/registration" id="link-registration">참가 신청 목록</a></li>
+      <li><a href="/prediction" id="link-prediction">10K 5등 예측 응모 목록</a></li>
     </ul>
+    <script>
+      (function(){ var p=location.pathname; if(p.indexOf('.html')!==-1){ var b=p.replace(/\/[^/]*$/, '')||'/'; document.getElementById('link-registration').href=b+(b==='/'?'':'/')+'registration.html'; document.getElementById('link-prediction').href=b+(b==='/'?'':'/')+'prediction.html'; } })();
+    </script>
     <p class="admin-index-back"><a href="/">← 메인으로</a></p>
   </div>
 </body>

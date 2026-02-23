@@ -22,16 +22,22 @@
     .prediction-loading { text-align: center; padding: 2rem; color: var(--color-text-muted); }
     .prediction-count { font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 1rem; }
   </style>
+  <script>
+    (function(){ if(!sessionStorage.getItem('bulorun_admin')){ var s=location.pathname.split('/').filter(Boolean); var b=s.length?('/'+(s.length===1?s[0]+'/':s.slice(0,-1).join('/')+'/')):'/'; location.href=b; } })();
+  </script>
 </head>
 <body>
   <div class="prediction-page">
     <div class="prediction-header">
       <h1 class="prediction-title">10K 5등 예측 응모 목록</h1>
       <div class="prediction-links">
-        <a href="/admin">← 관리자</a>
-        <a href="/">← 메인으로</a>
+        <a href="/admin" id="link-admin">← 관리자</a>
+        <a href="/" id="link-main">← 메인으로</a>
       </div>
     </div>
+    <script>
+      (function(){ var p=location.pathname; if(p.indexOf('.html')!==-1){ var b=p.replace(/\/[^/]*$/, '')||'/'; document.getElementById('link-admin').href=b+(b==='/'?'':'/')+'admin.html'; document.getElementById('link-main').href=b==='/'?'/':b; } })();
+    </script>
     <p class="prediction-count" id="prediction-count"></p>
     <div class="prediction-table-wrap">
       <table class="prediction-table" id="prediction-table">
