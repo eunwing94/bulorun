@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>10K 5등 예측 응모 목록 | 불로런</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .prediction-page { padding: 2rem 1.5rem; max-width: 900px; margin: 0 auto; }
+    .prediction-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+    .prediction-title { font-size: 1.5rem; font-weight: 700; color: var(--color-text, #1e2220); }
+    .prediction-links { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .prediction-links a { color: var(--color-blue, #5b8fb5); font-weight: 500; }
+    .prediction-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid rgba(91, 143, 181, 0.2); background: var(--color-surface, #fff); }
+    .prediction-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    .prediction-table th, .prediction-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid rgba(91, 143, 181, 0.12); }
+    .prediction-table th { background: rgba(91, 143, 181, 0.12); font-weight: 600; color: var(--color-blue, #5b8fb5); }
+    .prediction-table tr:hover td { background: #f0f3f6; }
+    .prediction-table .col-no { width: 4rem; text-align: center; }
+    .prediction-table .col-date { width: 11rem; white-space: nowrap; }
+    .prediction-empty { text-align: center; padding: 3rem; color: var(--color-text-muted, #5c6564); }
+    .prediction-loading { text-align: center; padding: 2rem; color: var(--color-text-muted); }
+    .prediction-count { font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="prediction-page">
+    <div class="prediction-header">
+      <h1 class="prediction-title">10K 5등 예측 응모 목록</h1>
+      <div class="prediction-links">
+        <a href="/admin">← 관리자</a>
+        <a href="/">← 메인으로</a>
+      </div>
+    </div>
+    <p class="prediction-count" id="prediction-count"></p>
+    <div class="prediction-table-wrap">
+      <table class="prediction-table" id="prediction-table">
+        <thead>
+          <tr>
+            <th class="col-no">No</th>
+            <th>응모자 이름</th>
+            <th>예측 5등</th>
+            <th class="col-date">응모일시</th>
+          </tr>
+        </thead>
+        <tbody id="prediction-tbody">
+          <tr><td colspan="4" class="prediction-loading">불러오는 중…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p id="prediction-empty" class="prediction-empty" style="display:none;">응모 내역이 없습니다.</p>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script>
+    var FIREBASE_CONFIG = {
+      apiKey: "AIzaSyAwknBpq0v02BAlVr6y_iDVJEYcTqauKNQ",
+      authDomain: "bulorun-275f7.firebaseapp.com",
+      projectId: "bulorun-275f7",
+      storageBucket: "bulorun-275f7.firebasestorage.app",
+      messagingSenderId: "688558152971",
+      appId: "1:688558152971:web:73aa5ed6bbb0577a2b160e",
+      measurementId: "G-YZDS6771Z7"
+    };
+    if (typeof FIREBASE_CONFIG === 'object' && FIREBASE_CONFIG && FIREBASE_CONFIG.projectId) {
+      try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        window.firestoreDb = firebase.firestore();
+      } catch (e) { console.warn('Firebase init:', e); }
+    }
+  </script>
+  <script>
+    (function () {
+      var tbody = document.getElementById('prediction-tbody');
+      var emptyEl = document.getElementById('prediction-empty');
+      var countEl = document.getElementById('prediction-count');
+
+      function escapeHtml(s) {
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      function formatCreatedAt(val) {
+        if (!val) return '';
+        if (val.toDate && typeof val.toDate === 'function') return val.toDate().toLocaleString('ko-KR');
+        return String(val);
+      }
+
+      function renderRows(rows) {
+        if (!rows || rows.length === 0) {
+          tbody.innerHTML = '';
+          emptyEl.style.display = 'block';
+          countEl.textContent = '';
+          return;
+        }
+        emptyEl.style.display = 'none';
+        countEl.textContent = '총 ' + rows.length + '건';
+        tbody.innerHTML = rows.map(function (r, i) {
+          return '<tr><td class="col-no">' + (rows.length - i) + '</td><td>' + escapeHtml(r.applicant_name || '') + '</td><td>' + escapeHtml(r.predicted_name || '') + '</td><td class="col-date">' + escapeHtml(r.created_at || '') + '</td></tr>';
+        }).join('');
+      }
+
+      function load() {
+        if (!window.firestoreDb) {
+          tbody.innerHTML = '<tr><td colspan="4" class="prediction-loading">Firebase 설정을 확인해 주세요.</td></tr>';
+          countEl.textContent = '';
+          return;
+        }
+        firestoreDb.collection('event_predictions').orderBy('created_at', 'desc').get()
+          .then(function (snap) {
+            var rows = snap.docs.map(function (d) {
+              var data = d.data();
+              return {
+                id: d.id,
+                applicant_name: data.applicant_name || '',
+                predicted_name: data.predicted_name || '',
+                created_at: formatCreatedAt(data.created_at)
+              };
+            });
+            renderRows(rows);
+          })
+          .catch(function () {
+            tbody.innerHTML = '<tr><td colspan="4" class="prediction-loading">목록을 불러오지 못했습니다.</td></tr>';
+            countEl.textContent = '';
+          });
+      }
+
+      load();
+    })();
+  </script>
+</body>
+</html>

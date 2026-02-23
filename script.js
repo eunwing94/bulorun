@@ -108,31 +108,162 @@
         alert(msg || '접수 중 오류가 발생했습니다. 다시 시도해 주세요.');
       }
 
-      if (window.firestoreDb) {
-        firestoreDb.collection('registrations').add({
-          name: payload.name,
-          birthdate: payload.birthdate,
-          category: payload.category,
-          dinner: payload.dinner,
-          message: payload.message,
-          created_at: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(onSuccess).catch(function (err) { onError('접수 중 오류가 발생했습니다.'); });
+      if (!window.firestoreDb) {
+        onError('Firebase 설정을 확인해 주세요.');
         return;
       }
-
-      var apiUrl = (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '') + '/api/registrations';
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', apiUrl);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.onload = function () {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          onSuccess();
-        } else {
-          onError();
-        }
-      };
-      xhr.onerror = function () { onError('접수 중 오류가 발생했습니다. 서버 연결을 확인해 주세요.'); };
-      xhr.send(JSON.stringify(payload));
+      firestoreDb.collection('registrations').add({
+        name: payload.name,
+        birthdate: payload.birthdate,
+        category: payload.category,
+        dinner: payload.dinner,
+        message: payload.message,
+        created_at: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(onSuccess).catch(function () { onError('접수 중 오류가 발생했습니다.'); });
     });
   }
+
+  /* ----- 이벤트(10K 5등 예측) 팝업 ----- */
+  var eventModal = document.getElementById('event-modal');
+  var eventBackdrop = document.querySelector('.event-modal-backdrop');
+  var eventCloseBtn = document.querySelector('.event-modal-close');
+  var eventCancelBtn = document.querySelector('.event-modal-cancel');
+  var openEventBtn = document.querySelector('.btn-open-event-modal');
+  var eventCandidatesEl = document.getElementById('event-candidates');
+  var eventApplicantInput = document.getElementById('event-applicant-name');
+  var eventSubmitBtn = document.getElementById('event-submit-btn');
+  var eventConfirmLayer = document.getElementById('event-confirm-layer');
+  var eventConfirmMessage = document.getElementById('event-confirm-message');
+  var eventConfirmOk = document.getElementById('event-confirm-ok');
+  var eventConfirmCancel = document.getElementById('event-confirm-cancel');
+
+  var selectedPredictedName = null;
+
+  function openEventModal() {
+    if (!eventModal) return;
+    if (eventConfirmLayer) {
+      eventConfirmLayer.hidden = true;
+      eventConfirmLayer.style.display = 'none';
+    }
+    eventModal.classList.add('is-open');
+    eventModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    selectedPredictedName = null;
+    if (eventApplicantInput) eventApplicantInput.value = '';
+    loadEventCandidates();
+  }
+
+  function closeEventModal() {
+    if (!eventModal) return;
+    eventModal.classList.remove('is-open');
+    eventModal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  function renderEventCandidates(rows) {
+    var names = (rows || []).map(function (r) { return (r.name || '').trim(); }).filter(Boolean);
+    names.sort(function (a, b) { return a.localeCompare(b, 'ko'); });
+    eventCandidatesEl.innerHTML = '';
+    names.forEach(function (name) {
+      var span = document.createElement('span');
+      span.className = 'event-candidate';
+      span.textContent = name;
+      span.setAttribute('data-name', name);
+      span.addEventListener('click', function () {
+        document.querySelectorAll('.event-candidate.selected').forEach(function (el) { el.classList.remove('selected'); });
+        span.classList.add('selected');
+        selectedPredictedName = name;
+      });
+      eventCandidatesEl.appendChild(span);
+    });
+    if (names.length === 0) eventCandidatesEl.innerHTML = '<p class="event-candidates-empty">10K 경쟁 부문 참가자가 아직 없습니다.</p>';
+  }
+
+  function loadEventCandidates() {
+    if (!eventCandidatesEl) return;
+    eventCandidatesEl.innerHTML = '<p class="event-candidates-loading">참가 후보를 불러오는 중…</p>';
+    if (!window.firestoreDb) {
+      eventCandidatesEl.innerHTML = '<p class="event-candidates-error">Firebase 설정을 확인해 주세요.</p>';
+      return;
+    }
+    firestoreDb.collection('registrations')
+      .where('category', '==', '10K-competition')
+      .get()
+      .then(function (snap) {
+        var rows = snap.docs.map(function (d) { return d.data(); });
+        renderEventCandidates(rows);
+      })
+      .catch(function () {
+        eventCandidatesEl.innerHTML = '<p class="event-candidates-error">목록을 불러오지 못했습니다.</p>';
+      });
+  }
+
+  function showEventConfirmDialog(predictedName) {
+    if (!eventConfirmLayer || !eventConfirmMessage) return;
+    eventConfirmMessage.textContent = predictedName + ' 님이 10K 5등이라고 생각하시나요?';
+    eventConfirmLayer.hidden = false;
+    eventConfirmLayer.style.display = 'flex';
+  }
+
+  function hideEventConfirmDialog() {
+    if (eventConfirmLayer) {
+      eventConfirmLayer.hidden = true;
+      eventConfirmLayer.style.display = 'none';
+    }
+  }
+
+  function submitEventPrediction() {
+    var applicantName = (eventApplicantInput && eventApplicantInput.value) ? eventApplicantInput.value.trim() : '';
+    if (!applicantName) {
+      alert('본인 이름을 입력해 주세요.');
+      if (eventApplicantInput) eventApplicantInput.focus();
+      return;
+    }
+    if (!selectedPredictedName) {
+      alert('참가 후보 중 한 명을 선택해 주세요.');
+      return;
+    }
+    showEventConfirmDialog(selectedPredictedName);
+  }
+
+  function doSubmitEventPrediction() {
+    var applicantName = (eventApplicantInput && eventApplicantInput.value) ? eventApplicantInput.value.trim() : '';
+    if (!applicantName || !selectedPredictedName) return;
+    hideEventConfirmDialog();
+
+    function onSuccess() {
+      closeEventModal();
+      alert('응모가 완료되었습니다!');
+    }
+    function onError(msg) {
+      alert(msg || '저장 중 오류가 발생했습니다.');
+    }
+
+    if (!window.firestoreDb) {
+      onError('Firebase 설정을 확인해 주세요.');
+      return;
+    }
+    firestoreDb.collection('event_predictions').where('applicant_name', '==', applicantName).get()
+      .then(function (snap) {
+        if (snap && !snap.empty) {
+          onError('이미 응모하신 이름입니다. 한 번만 응모 가능합니다.');
+          return;
+        }
+        return firestoreDb.collection('event_predictions').add({
+          applicant_name: applicantName,
+          predicted_name: selectedPredictedName,
+          created_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      })
+      .then(function (ref) { if (ref) onSuccess(); })
+      .catch(function () { onError('저장 중 오류가 발생했습니다.'); });
+  }
+
+  if (openEventBtn) openEventBtn.addEventListener('click', openEventModal);
+  if (eventCloseBtn) eventCloseBtn.addEventListener('click', closeEventModal);
+  if (eventBackdrop) eventBackdrop.addEventListener('click', closeEventModal);
+  if (eventCancelBtn) eventCancelBtn.addEventListener('click', closeEventModal);
+  if (eventSubmitBtn) eventSubmitBtn.addEventListener('click', submitEventPrediction);
+  if (eventConfirmOk) eventConfirmOk.addEventListener('click', doSubmitEventPrediction);
+  if (eventConfirmCancel) eventConfirmCancel.addEventListener('click', hideEventConfirmDialog);
 })();

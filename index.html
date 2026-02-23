@@ -123,7 +123,7 @@
         <div class="event-content">
           <h4 class="event-title">10K 5등을 맞춰라!!</h4>
           <p class="event-desc">당일 10K를 뛰는 구성원이 공개되면 누가 5등을 할지 "정확히" 맞추시는 분들에게도 소정의 상품이 지급될 예정입니다.</p>
-          <p class="event-desc">이벤트는 추후 최종 10K 참가 명단이 결정된 후 응모페이지가 공개됩니다!</p>
+          <button type="button" class="btn btn-open-event-modal">10K 5등 예측 응모하기</button>
         </div>
       </div>
     </section>
@@ -157,6 +157,38 @@
       </div>
     </section>
   </main>
+
+  <!-- 이벤트(10K 5등 예측) 팝업 -->
+  <div id="event-modal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop event-modal-backdrop"></div>
+    <div class="modal-box event-modal-box">
+      <button type="button" class="modal-close event-modal-close" aria-label="닫기">&times;</button>
+      <p class="event-modal-intro">다음은 10K 경쟁 부문에 출전하는 선수들입니다.<br>여기서 10K 5등을 차지할 사람은 누구일지 맞춰주세요!!</p>
+      <div class="event-modal-section">
+        <h4 class="event-modal-heading">1. 참가 후보</h4>
+        <p class="event-modal-hint">아래 후보 중 한 명을 클릭해 선택하세요. (마우스를 올리면 굵게 표시됩니다)</p>
+        <div id="event-candidates" class="event-candidates"></div>
+      </div>
+      <div class="event-modal-section">
+        <h4 class="event-modal-heading">2. 추첨을 위해 응모하시는 본인 이름을 작성해 주세요.</h4>
+        <input type="text" id="event-applicant-name" class="event-applicant-input" placeholder="본인 이름">
+      </div>
+      <div class="event-modal-actions">
+        <button type="button" class="btn btn-submit" id="event-submit-btn">응모하기</button>
+        <button type="button" class="btn btn-outline event-modal-cancel">취소하기</button>
+      </div>
+      <!-- 확인 팝업 레이어 (응모하기 클릭 후) -->
+      <div id="event-confirm-layer" class="event-confirm-layer" hidden style="display: none;">
+        <div class="event-confirm-box">
+          <p id="event-confirm-message" class="event-confirm-message"></p>
+          <div class="event-confirm-actions">
+            <button type="button" class="btn btn-submit" id="event-confirm-ok">확인</button>
+            <button type="button" class="btn btn-outline" id="event-confirm-cancel">취소</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- 참가 신청 팝업 -->
   <div id="form-modal" class="modal" aria-hidden="true">
@@ -211,8 +243,23 @@
       </div>
       <p class="footer-contact">문의: 미스토 프로젝트 운영팀</p>
       <p class="footer-copy">© 2026 불로런. All rights reserved.</p>
+      <p class="footer-admin"><button type="button" class="footer-admin-label" id="admin-entry-btn">Administrator</button></p>
     </div>
   </footer>
+
+  <!-- 관리자 비밀번호 팝업 -->
+  <div id="admin-auth-modal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop admin-auth-backdrop"></div>
+    <div class="modal-box" style="max-width: 360px;">
+      <h3 class="modal-title">관리자 로그인</h3>
+      <p style="margin-bottom: 1rem; color: var(--color-text-muted, #5c6564); font-size: 0.95rem;">비밀번호를 입력하세요.</p>
+      <input type="password" id="admin-auth-password" class="form input" placeholder="비밀번호" style="width: 100%; padding: 0.75rem; margin-bottom: 1rem; border-radius: 10px; border: 1px solid rgba(91, 143, 181, 0.25);">
+      <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+        <button type="button" class="btn btn-outline" id="admin-auth-cancel">취소</button>
+        <button type="button" class="btn btn-submit" id="admin-auth-submit">확인</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 방법 1) Firebase 사용 (백엔드 없이 GitHub Pages만 사용 시): Firebase 콘솔에서 프로젝트 생성 후 아래 설정 복사 -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -234,8 +281,50 @@
       } catch (e) { console.warn('Firebase init:', e); }
     }
   </script>
-  <!-- 방법 2) Node 백엔드 사용 시: 아래만 설정 (예: https://bulorun-api.onrender.com) -->
-  <script>var API_BASE_URL = '';</script>
   <script src="script.js"></script>
+  <script>
+    (function () {
+      var btn = document.getElementById('admin-entry-btn');
+      var modal = document.getElementById('admin-auth-modal');
+      var backdrop = modal && modal.querySelector('.admin-auth-backdrop');
+      var input = document.getElementById('admin-auth-password');
+      var cancelBtn = document.getElementById('admin-auth-cancel');
+      var submitBtn = document.getElementById('admin-auth-submit');
+
+      function openAdminModal() {
+        if (!modal) return;
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        if (input) { input.value = ''; input.focus(); }
+      }
+      function closeAdminModal() {
+        if (!modal) return;
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+      }
+
+      if (btn) btn.addEventListener('click', openAdminModal);
+      if (cancelBtn) cancelBtn.addEventListener('click', closeAdminModal);
+      if (backdrop) backdrop.addEventListener('click', closeAdminModal);
+      if (submitBtn && input) {
+        submitBtn.addEventListener('click', function () {
+          var password = input.value.trim();
+          if (!password) { alert('비밀번호를 입력하세요.'); return; }
+          fetch('/api/admin-auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: password }),
+            credentials: 'same-origin'
+          }).then(function (res) {
+            if (res.ok) { closeAdminModal(); window.location.href = '/admin'; return; }
+            return res.json().then(function (data) { alert(data.error || '비밀번호가 올바르지 않습니다.'); });
+          }).catch(function () { alert('연결할 수 없습니다. 서버를 확인하세요.'); });
+        });
+      }
+      modal && modal.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAdminModal(); });
+    })();
+  </script>
 </body>
 </html>

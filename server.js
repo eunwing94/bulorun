@@ -1,39 +1,14 @@
 const path = require('path');
 const express = require('express');
-const Database = require('better-sqlite3');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_PATH = path.join(__dirname, 'data', 'registrations.db');
+const ADMIN_PASSWORD = 'BuloERP1!';
+const ADMIN_COOKIE = 'bulorun_admin';
+const ADMIN_COOKIE_MAX_AGE = 24 * 60 * 60; // 24시간
 
-let db;
-
-function getDb() {
-  if (!db) {
-    const fs = require('fs');
-    const dir = path.dirname(DB_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    db = new Database(DB_PATH);
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS registrations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        birthdate TEXT NOT NULL,
-        category TEXT NOT NULL,
-        dinner TEXT NOT NULL,
-        message TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now', 'localtime'))
-      )
-    `);
-  }
-  return db;
-}
-
-function initDb() {
-  getDb();
-  console.log('DB initialized at', DB_PATH);
-}
-
+app.use(cookieParser());
 app.use(express.json());
 
 // 다른 도메인에서 접속해도 API 호출 가능 (배포 시 프론트/백 분리 대비)
@@ -45,63 +20,73 @@ app.use(function (req, res, next) {
   next();
 });
 
-app.get('/admin', function (req, res) {
+function requireAdmin(req, res, next) {
+  if (req.cookies && req.cookies[ADMIN_COOKIE] === '1') return next();
+  res.redirect(302, '/');
+}
+
+// 비밀번호 확인 후 쿠키 발급
+app.post('/api/admin-auth', function (req, res) {
+  var password = (req.body && req.body.password) ? String(req.body.password).trim() : '';
+  if (password === ADMIN_PASSWORD) {
+    res.cookie(ADMIN_COOKIE, '1', {
+      maxAge: ADMIN_COOKIE_MAX_AGE * 1000,
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/'
+    });
+    res.status(200).json({ ok: true });
+  } else {
+    res.status(401).json({ error: '비밀번호가 올바르지 않습니다.' });
+  }
+});
+
+// 관리자 목록 (비밀번호 통과 후에만 접근)
+app.get('/admin', requireAdmin, function (req, res) {
   res.sendFile(path.join(__dirname, 'admin.html'), function (err) {
     if (err) {
       console.error('admin.html sendFile:', err);
-      res.status(500).send('admin 페이지를 불러올 수 없습니다.');
+      res.status(500).send('관리자 페이지를 불러올 수 없습니다.');
     }
   });
 });
-app.get('/admin.html', function (req, res) {
-  res.sendFile(path.join(__dirname, 'admin.html'));
+
+// 참가 신청 목록 - 삭제 버튼 있음 (/registration에서 우클릭 5회로 진입)
+app.get('/registration-delete', requireAdmin, function (req, res) {
+  res.sendFile(path.join(__dirname, 'registration.html'), function (err) {
+    if (err) {
+      console.error('registration.html sendFile:', err);
+      res.status(500).send('참가 신청 목록을 불러올 수 없습니다.');
+    }
+  });
 });
 
-app.post('/api/registrations', function (req, res) {
-  const { name, birthdate, category, dinner, message } = req.body || {};
-  if (!name || !birthdate || !category || !dinner || !message) {
-    return res.status(400).json({ error: '필수 항목을 모두 입력해 주세요.' });
-  }
-  try {
-    const database = getDb();
-    const stmt = database.prepare(`
-      INSERT INTO registrations (name, birthdate, category, dinner, message)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    stmt.run(
-      String(name).trim(),
-      String(birthdate).trim(),
-      String(category).trim(),
-      String(dinner).trim(),
-      String(message).trim()
-    );
-    res.status(201).json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: '저장 중 오류가 발생했습니다.' });
-  }
+// 참가 신청 목록 (직접 접속 불가, 쿠키 필요)
+app.get('/registration', requireAdmin, function (req, res) {
+  res.sendFile(path.join(__dirname, 'registration.html'), function (err) {
+    if (err) {
+      console.error('registration.html sendFile:', err);
+      res.status(500).send('참가 신청 목록을 불러올 수 없습니다.');
+    }
+  });
 });
 
-app.get('/api/registrations', function (req, res) {
-  try {
-    const database = getDb();
-    const rows = database.prepare(
-      'SELECT id, name, birthdate, category, dinner, message, created_at FROM registrations ORDER BY id DESC'
-    ).all();
-    res.json(rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: '조회 중 오류가 발생했습니다.' });
-  }
+// 예측 응모 목록 (직접 접속 불가, 쿠키 필요)
+app.get('/prediction', requireAdmin, function (req, res) {
+  res.sendFile(path.join(__dirname, 'prediction.html'), function (err) {
+    if (err) {
+      console.error('prediction.html sendFile:', err);
+      res.status(500).send('예측 응모 조회 페이지를 불러올 수 없습니다.');
+    }
+  });
 });
 
 app.use(express.static(__dirname));
 
 if (require.main === module) {
-  initDb();
   app.listen(PORT, function () {
     console.log('불로런 서버: http://localhost:' + PORT);
   });
 }
 
-module.exports = { app, getDb, initDb };
+module.exports = { app };

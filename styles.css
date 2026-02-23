@@ -604,6 +604,10 @@ a:hover {
   font-size: 1.05rem;
 }
 
+.event-content .btn-open-event-modal {
+  margin-top: 1.25rem;
+}
+
 /* ===== 모달 & 폼 ===== */
 .modal {
   position: fixed;
@@ -735,6 +739,137 @@ a:hover {
   box-shadow: 0 0 28px var(--color-accent-glow);
 }
 
+.btn-outline {
+  background: transparent;
+  color: var(--color-blue);
+  border: 1px solid var(--color-blue);
+}
+.btn-outline:hover {
+  background: var(--color-blue-soft);
+}
+
+/* ===== 이벤트 팝업 (10K 5등 예측) ===== */
+.event-modal-box {
+  max-width: 520px;
+}
+
+.event-modal-intro {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--color-text);
+  margin-bottom: 1.5rem;
+  padding-right: 2rem;
+}
+
+.event-modal-section {
+  margin-bottom: 1.5rem;
+}
+
+.event-modal-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-blue);
+  margin-bottom: 0.5rem;
+}
+
+.event-modal-hint {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.6rem;
+}
+
+.event-candidates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem;
+  background: var(--color-surface-elevated);
+  border: 1px solid rgba(91, 143, 181, 0.2);
+  border-radius: var(--radius-sm);
+  min-height: 3rem;
+}
+
+.event-candidate {
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: font-weight 0.15s ease, background 0.15s ease;
+}
+
+.event-candidate:hover {
+  font-weight: 700;
+}
+
+.event-candidate.selected {
+  font-weight: 700;
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+}
+
+.event-candidates-loading,
+.event-candidates-empty,
+.event-candidates-error {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.event-applicant-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-family: var(--font-body);
+  border: 1px solid rgba(91, 143, 181, 0.25);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-elevated);
+}
+
+.event-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.event-modal-actions .btn {
+  flex: 1;
+}
+
+.event-confirm-layer {
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 34, 32, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  z-index: 1;
+}
+.event-confirm-layer[hidden] {
+  display: none !important;
+}
+
+.event-confirm-box {
+  background: var(--color-surface);
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  max-width: 360px;
+  width: 100%;
+}
+
+.event-confirm-message {
+  font-size: 1.05rem;
+  margin-bottom: 1.25rem;
+  color: var(--color-text);
+}
+
+.event-confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
 /* ===== FAQ ===== */
 .faq {
   background: var(--color-bg);
@@ -847,4 +982,21 @@ a:hover {
 
 .footer-copy {
   margin-top: 0.5rem;
+}
+
+.footer-admin {
+  margin-top: 1rem;
+  margin-bottom: 0;
+}
+.footer-admin-label {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.footer-admin-label:hover {
+  color: var(--color-text);
 }

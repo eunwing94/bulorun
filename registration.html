@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>참가 신청 목록 | 불로런 관리자</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-page { padding: 2rem 1.5rem; max-width: 1600px; margin: 0 auto; }
+    .admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+    .admin-title { font-size: 1.5rem; font-weight: 700; color: var(--color-text, #1e2220); }
+    .admin-link { color: var(--color-blue, #5b8fb5); font-weight: 500; }
+    .admin-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+    .admin-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+    .admin-filters label { font-size: 0.9rem; color: var(--color-text-muted, #5c6564); margin-right: 0.25rem; }
+    .admin-filters select, .admin-filters input { padding: 0.5rem 0.75rem; border: 1px solid rgba(91, 143, 181, 0.3); border-radius: 8px; font-size: 0.9rem; background: var(--color-surface, #fff); }
+    .admin-filters input[type="text"] { min-width: 160px; }
+    .admin-btn { padding: 0.5rem 1rem; font-size: 0.9rem; font-weight: 600; border-radius: 8px; cursor: pointer; border: none; background: var(--color-blue, #5b8fb5); color: #fff; }
+    .admin-btn:hover { opacity: 0.9; }
+    .admin-btn-excel { background: #217346; }
+    .admin-count { font-size: 0.9rem; color: var(--color-text-muted); }
+    .admin-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid rgba(91, 143, 181, 0.2); background: var(--color-surface, #fff); }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .admin-table th, .admin-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid rgba(91, 143, 181, 0.12); }
+    .admin-table th { background: var(--color-blue-soft, rgba(91, 143, 181, 0.12)); font-weight: 600; color: var(--color-blue, #5b8fb5); }
+    .admin-table tr:hover td { background: var(--color-surface-elevated, #f0f3f6); }
+    .admin-table tr.hidden { display: none; }
+    .admin-table .col-name { min-width: 6rem; white-space: nowrap; }
+    .admin-table .col-birthdate { min-width: 11rem; white-space: nowrap; }
+    .admin-table .col-category { min-width: 13rem; }
+    .admin-table .col-date { min-width: 12rem; white-space: nowrap; }
+    .admin-table .filter-row th { padding: 0.5rem; vertical-align: middle; background: rgba(91, 143, 181, 0.06); }
+    .admin-table .filter-row input,
+    .admin-table .filter-row select { width: 100%; max-width: 100%; padding: 0.4rem 0.5rem; font-size: 0.85rem; border: 1px solid rgba(91, 143, 181, 0.25); border-radius: 6px; }
+    .filter-dropdown-wrap { position: relative; }
+    .filter-dropdown-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.5rem; font-size: 0.85rem; border: 1px solid rgba(91, 143, 181, 0.25); border-radius: 6px; background: var(--color-surface, #fff); cursor: pointer; text-align: left; }
+    .filter-dropdown-trigger:hover { border-color: rgba(91, 143, 181, 0.45); }
+    .filter-dropdown-value { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .filter-dropdown-chevron { margin-left: 0.25rem; font-size: 0.7rem; transition: transform 0.2s; }
+    .filter-dropdown-wrap.open .filter-dropdown-chevron { transform: rotate(180deg); }
+    .filter-dropdown-panel { position: absolute; left: 0; right: 0; top: 100%; margin-top: 2px; padding: 0.5rem; background: #fff; border: 1px solid rgba(91, 143, 181, 0.25); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 10; max-height: 12rem; overflow-y: auto; color: #1e2220; font-size: 0.85rem; }
+    .filter-dropdown-panel--portal { position: fixed; left: auto; right: auto; top: auto; margin: 0; }
+    .filter-dropdown-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; font-size: 0.85rem; cursor: pointer; color: #1e2220; }
+    .filter-dropdown-item input { margin: 0; flex-shrink: 0; width: 1rem; height: 1rem; }
+    .filter-dropdown-panel label { white-space: nowrap; }
+    .filter-dropdown-panel .filter-dropdown-item span { display: inline-block !important; color: #1e2220 !important; font-size: 0.85rem !important; visibility: visible !important; opacity: 1 !important; min-width: 1px; }
+    .admin-table .name-duplicate { color: #c53030; font-weight: 600; }
+    .admin-table td::before,
+    .admin-table td::after,
+    .admin-table th::before,
+    .admin-table th::after { display: none !important; content: none !important; }
+    .admin-empty { text-align: center; padding: 3rem; color: var(--color-text-muted, #5c6564); }
+    .admin-loading { text-align: center; padding: 2rem; color: var(--color-text-muted); }
+    .admin-table .col-action { width: 5rem; text-align: center; white-space: nowrap; }
+    .admin-btn-delete { padding: 0.35rem 0.6rem; font-size: 0.8rem; border-radius: 6px; border: none; background: var(--color-red-soft, rgba(184, 92, 92, 0.15)); color: var(--color-red, #b85c5c); cursor: pointer; font-weight: 500; }
+    .admin-btn-delete:hover { background: rgba(184, 92, 92, 0.3); }
+    body.registration-hide-delete th.col-action,
+    body.registration-hide-delete td.col-action { display: none; }
+  </style>
+</head>
+<body>
+  <div class="admin-page">
+    <div class="admin-header">
+      <h1 class="admin-title">참가 신청 목록</h1>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+        <a href="/registration" class="admin-link link-to-list" id="link-to-list" style="display:none;">← 목록 보기</a>
+        <a href="/admin" class="admin-link">← 관리자</a>
+        <a href="/" class="admin-link">← 메인으로</a>
+      </div>
+    </div>
+    <div class="admin-toolbar" style="margin-bottom: 1rem;">
+      <button type="button" class="admin-btn admin-btn-excel" id="btn-excel">엑셀 다운로드</button>
+      <span class="admin-count" id="admin-count"></span>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table" id="admin-table">
+        <thead>
+          <tr>
+            <th class="col-name">이름</th>
+            <th class="col-birthdate">생년월일</th>
+            <th class="col-category">참가 부문</th>
+            <th>회식</th>
+            <th>각오 한마디</th>
+            <th class="col-date">접수일시</th>
+            <th class="col-action">삭제</th>
+          </tr>
+          <tr class="filter-row">
+            <th><input type="text" id="filter-name" placeholder="이름 검색"></th>
+            <th></th>
+            <th>
+              <div class="filter-dropdown-wrap" id="filter-category-wrap">
+                <button type="button" class="filter-dropdown-trigger" id="filter-category-trigger" aria-expanded="false">
+                  <span class="filter-dropdown-value" id="filter-category-value">전체</span>
+                  <span class="filter-dropdown-chevron">▼</span>
+                </button>
+                <div class="filter-dropdown-panel" id="filter-category-panel" hidden>
+                  <label class="filter-dropdown-item">
+                    <input type="checkbox" id="filter-category-all" data-value="all">
+                    <span>전체</span>
+                  </label>
+                  <label class="filter-dropdown-item"><input type="checkbox" name="filter-category-cb" value="10K-competition"><span>10K - 경쟁부문</span></label>
+                  <label class="filter-dropdown-item"><input type="checkbox" name="filter-category-cb" value="10K-noncompetition"><span>10K - 비경쟁부문</span></label>
+                  <label class="filter-dropdown-item"><input type="checkbox" name="filter-category-cb" value="5K-competition"><span>5K - 경쟁부문</span></label>
+                  <label class="filter-dropdown-item"><input type="checkbox" name="filter-category-cb" value="5K-noncompetition"><span>5K - 비경쟁부문</span></label>
+                  <label class="filter-dropdown-item"><input type="checkbox" name="filter-category-cb" value="staff"><span>스탭지원</span></label>
+                  <label class="filter-dropdown-item"><input type="checkbox" name="filter-category-cb" value="none"><span>참가안함</span></label>
+                </div>
+              </div>
+            </th>
+            <th>
+              <select id="filter-dinner">
+                <option value="">전체</option>
+                <option value="attend">참석</option>
+                <option value="absent">불참</option>
+              </select>
+            </th>
+            <th><input type="text" id="filter-search" placeholder="각오 한마디 검색"></th>
+            <th></th>
+            <th class="col-action"></th>
+          </tr>
+        </thead>
+        <tbody id="admin-tbody">
+          <tr><td colspan="7" class="admin-loading">불러오는 중…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p id="admin-empty" class="admin-empty" style="display:none;">접수된 내역이 없습니다.</p>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script>
+    (function () {
+      var path = window.location.pathname;
+      if (path === '/registration') {
+        document.body.classList.add('registration-hide-delete');
+        var rightClickCount = 0;
+        var resetTimer = null;
+        document.addEventListener('contextmenu', function (e) {
+          e.preventDefault();
+          rightClickCount++;
+          if (resetTimer) clearTimeout(resetTimer);
+          if (rightClickCount >= 5) {
+            window.location.href = '/registration-delete';
+            return;
+          }
+          resetTimer = setTimeout(function () { rightClickCount = 0; }, 1500);
+        });
+      } else if (path === '/registration-delete') {
+        var link = document.getElementById('link-to-list');
+        if (link) link.style.display = '';
+      }
+    })();
+  </script>
+  <script>
+    var FIREBASE_CONFIG = {
+      apiKey: "AIzaSyAwknBpq0v02BAlVr6y_iDVJEYcTqauKNQ",
+      authDomain: "bulorun-275f7.firebaseapp.com",
+      projectId: "bulorun-275f7",
+      storageBucket: "bulorun-275f7.firebasestorage.app",
+      messagingSenderId: "688558152971",
+      appId: "1:688558152971:web:73aa5ed6bbb0577a2b160e",
+      measurementId: "G-YZDS6771Z7"
+    };
+    if (typeof FIREBASE_CONFIG === 'object' && FIREBASE_CONFIG && FIREBASE_CONFIG.projectId) {
+      try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        window.firestoreDb = firebase.firestore();
+      } catch (e) { console.warn('Firebase init:', e); }
+    }
+  </script>
+  <script>
+    var categoryLabels = {
+      '10K-competition': '10K - 경쟁부문',
+      '10K-noncompetition': '10K - 비경쟁부문',
+      '5K-competition': '5K - 경쟁부문',
+      '5K-noncompetition': '5K - 비경쟁부문',
+      'staff': '스탭지원',
+      'none': '참가안함'
+    };
+    var dinnerLabels = { 'attend': '참석', 'absent': '불참' };
+
+    var allRows = [];
+
+    function escapeHtml(s) {
+      var div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    function formatBirthdate(val) {
+      if (!val) return '';
+      var s = String(val).trim().replace(/\s/g, '');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      var m = s.match(/^(\d{4})[-\/]?(\d{1,2})[-\/]?(\d{1,2})$/);
+      if (m) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
+      if (/^\d{8}$/.test(s)) return s.slice(0, 4) + '-' + s.slice(4, 6) + '-' + s.slice(6, 8);
+      return s;
+    }
+
+    function getCategoryFilterValues() {
+      var list = document.querySelectorAll('input[name="filter-category-cb"]:checked');
+      var arr = [];
+      for (var i = 0; i < list.length; i++) arr.push(list[i].value);
+      return arr;
+    }
+
+    function updateCategoryFilterDisplay() {
+      var values = getCategoryFilterValues();
+      var total = document.querySelectorAll('input[name="filter-category-cb"]').length;
+      var el = document.getElementById('filter-category-value');
+      if (values.length === 0 || values.length === total) el.textContent = '전체';
+      else el.textContent = values.length + '개 선택됨';
+    }
+
+    function getFilters() {
+      var categories = getCategoryFilterValues();
+      var total = document.querySelectorAll('input[name="filter-category-cb"]').length;
+      if (categories.length === 0 || categories.length === total) categories = [];
+      return {
+        name: (document.getElementById('filter-name').value || '').trim().toLowerCase(),
+        categories: categories,
+        dinner: document.getElementById('filter-dinner').value,
+        search: (document.getElementById('filter-search').value || '').trim().toLowerCase()
+      };
+    }
+
+    function filterRows(rows) {
+      var f = getFilters();
+      return rows.filter(function (r) {
+        if (f.name && (r.name || '').toLowerCase().indexOf(f.name) === -1) return false;
+        if (f.categories.length > 0 && f.categories.indexOf(r.category) === -1) return false;
+        if (f.dinner && r.dinner !== f.dinner) return false;
+        if (f.search && (r.message || '').toLowerCase().indexOf(f.search) === -1) return false;
+        return true;
+      });
+    }
+
+    function getDuplicateNames(rows) {
+      var count = {};
+      rows.forEach(function (r) {
+        var n = String(r.name || '').trim();
+        if (n) count[n] = (count[n] || 0) + 1;
+      });
+      var dup = {};
+      Object.keys(count).forEach(function (n) { if (count[n] > 1) dup[n] = true; });
+      return dup;
+    }
+
+    function renderTable(rows) {
+      var tbody = document.getElementById('admin-tbody');
+      var emptyEl = document.getElementById('admin-empty');
+      var countEl = document.getElementById('admin-count');
+      var duplicateNames = getDuplicateNames(allRows);
+
+      if (!rows || rows.length === 0) {
+        tbody.innerHTML = '';
+        emptyEl.style.display = 'block';
+        countEl.textContent = '';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      countEl.textContent = '총 ' + rows.length + '명';
+      tbody.innerHTML = rows.map(function (r) {
+        var cat = categoryLabels[r.category] || r.category;
+        var dinner = dinnerLabels[r.dinner] || r.dinner;
+        var nameStr = String(r.name || '').replace(/,/g, '').trim();
+        var birthStr = formatBirthdate(r.birthdate);
+        var nameClass = duplicateNames[nameStr] ? 'col-name name-duplicate' : 'col-name';
+        return '<tr data-id="' + r.id + '"><td class="' + nameClass + '">' + escapeHtml(nameStr) + '</td><td>' + escapeHtml(birthStr) + '</td><td>' + escapeHtml(cat) + '</td><td>' + escapeHtml(dinner) + '</td><td>' + escapeHtml(r.message) + '</td><td class="col-date">' + escapeHtml(r.created_at) + '</td><td class="col-action"><button type="button" class="admin-btn-delete" data-id="' + escapeHtml(r.id) + '">삭제</button></td></tr>';
+      }).join('');
+    }
+
+    function applyFilter() {
+      var filtered = filterRows(allRows);
+      filtered.sort(function (a, b) { return (a.name || '').localeCompare(b.name || '', 'ko'); });
+      renderTable(filtered);
+    }
+
+    function downloadExcel() {
+      var filtered = filterRows(allRows);
+      filtered.sort(function (a, b) { return (a.name || '').localeCompare(b.name || '', 'ko'); });
+      if (filtered.length === 0) {
+        alert('다운로드할 데이터가 없습니다.');
+        return;
+      }
+      var headers = ['No', '이름', '생년월일', '참가 부문', '회식', '각오 한마디', '접수일시'];
+      var csv = headers.map(function (h) { return '"' + String(h).replace(/"/g, '""') + '"'; }).join(',') + '\r\n';
+      filtered.forEach(function (r) {
+        var cat = categoryLabels[r.category] || r.category;
+        var dinner = dinnerLabels[r.dinner] || r.dinner;
+        var row = [r.id, r.name, formatBirthdate(r.birthdate), cat, dinner, r.message, r.created_at];
+        csv += row.map(function (cell) { return '"' + String(cell || '').replace(/"/g, '""') + '"'; }).join(',') + '\r\n';
+      });
+      var BOM = '\uFEFF';
+      var blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '불로런_참가신청목록_' + new Date().toISOString().slice(0, 10) + '.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    (function () {
+      var wrap = document.getElementById('filter-category-wrap');
+      var trigger = document.getElementById('filter-category-trigger');
+      var panel = document.getElementById('filter-category-panel');
+      var allCb = document.getElementById('filter-category-all');
+      var cbs = document.querySelectorAll('input[name="filter-category-cb"]');
+      var panelInBody = false;
+
+      function positionPanel() {
+        var rect = trigger.getBoundingClientRect();
+        panel.style.top = (rect.bottom + 2) + 'px';
+        panel.style.left = rect.left + 'px';
+        panel.style.minWidth = rect.width + 'px';
+      }
+
+      function open() {
+        wrap.classList.add('open');
+        if (!panelInBody) {
+          document.body.appendChild(panel);
+          panel.classList.add('filter-dropdown-panel--portal');
+          panelInBody = true;
+        }
+        positionPanel();
+        panel.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+
+      function close() {
+        wrap.classList.remove('open');
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+      }
+
+      function toggle() { if (panel.hidden) open(); else close(); }
+
+      trigger.addEventListener('click', function (e) { e.stopPropagation(); toggle(); });
+      document.addEventListener('click', function () { if (!panel.hidden) close(); });
+      wrap.addEventListener('click', function (e) { e.stopPropagation(); });
+      window.addEventListener('scroll', function () { if (!panel.hidden) positionPanel(); }, true);
+      window.addEventListener('resize', function () { if (!panel.hidden) positionPanel(); });
+
+      allCb.addEventListener('change', function () {
+        for (var i = 0; i < cbs.length; i++) cbs[i].checked = allCb.checked;
+        updateCategoryFilterDisplay();
+        applyFilter();
+      });
+      for (var i = 0; i < cbs.length; i++) {
+        cbs[i].addEventListener('change', function () {
+          var checked = document.querySelectorAll('input[name="filter-category-cb"]:checked').length;
+          allCb.checked = checked === cbs.length;
+          allCb.indeterminate = checked > 0 && checked < cbs.length;
+          updateCategoryFilterDisplay();
+          applyFilter();
+        });
+      }
+    })();
+
+    document.getElementById('filter-name').addEventListener('input', applyFilter);
+    document.getElementById('filter-dinner').addEventListener('change', applyFilter);
+    document.getElementById('filter-search').addEventListener('input', applyFilter);
+    document.getElementById('btn-excel').addEventListener('click', downloadExcel);
+
+    document.getElementById('admin-tbody').addEventListener('click', function (e) {
+      if (!e.target.classList.contains('admin-btn-delete')) return;
+      var id = e.target.getAttribute('data-id');
+      if (!id || !window.firestoreDb) return;
+      if (!confirm('이 참가 신청을 삭제하시겠습니까?')) return;
+      firestoreDb.collection('registrations').doc(id).delete()
+        .then(function () {
+          allRows = allRows.filter(function (r) { return r.id !== id; });
+          applyFilter();
+        })
+        .catch(function () { alert('삭제에 실패했습니다.'); });
+    });
+
+    function formatCreatedAt(val) {
+      if (!val) return '';
+      if (val.toDate && typeof val.toDate === 'function') return val.toDate().toLocaleString('ko-KR');
+      return String(val);
+    }
+
+    function loadRows() {
+      if (!window.firestoreDb) {
+        document.getElementById('admin-tbody').innerHTML = '<tr><td colspan="7" class="admin-loading">Firebase 설정을 확인해 주세요.</td></tr>';
+        return;
+      }
+      firestoreDb.collection('registrations').get()
+        .then(function (snap) {
+          allRows = snap.docs.map(function (d) {
+            var data = d.data();
+            return {
+              id: d.id,
+              name: data.name || '',
+              birthdate: data.birthdate || '',
+              category: data.category || '',
+              dinner: data.dinner || '',
+              message: data.message || '',
+              created_at: formatCreatedAt(data.created_at),
+              _ts: data.created_at && data.created_at.toMillis ? data.created_at.toMillis() : 0
+            };
+          });
+          allRows.sort(function (a, b) { return (b._ts || 0) - (a._ts || 0); });
+          allRows.forEach(function (r) { delete r._ts; });
+          applyFilter();
+        })
+        .catch(function () {
+          document.getElementById('admin-tbody').innerHTML = '<tr><td colspan="7" class="admin-loading">목록을 불러오지 못했습니다.</td></tr>';
+        });
+    }
+    loadRows();
+  </script>
+</body>
+</html>
